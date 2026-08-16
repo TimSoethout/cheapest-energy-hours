@@ -395,15 +395,16 @@
             {%- set data = [] -%}
             {%- set valid_price_data = false -%}
         {%- endif -%}
-        {#- normalize zonneplan data to support both old (electricity_price/datetime) and new (price_tax_included.amount/start_date) API formats -#}
         {%- if source_settings == 'zonneplan' and data is defined and data | count > 0 and data[0] is mapping -%}
-            {%- if 'electricity_price' not in data[0] or time_key not in data[0] -%}
+            {%- if value_key not in data[0] or time_key not in data[0] -%}
                 {%- set ns_zp = namespace(data=[]) -%}
-                {%- for item in data -%}
+                {%- for item in data if item is mapping -%}
                     {%- set zp_time = item.get('start_date', item.get('datetime', item.get(time_key))) -%}
                     {%- set zp_price_nested = item.get('price_tax_included') -%}
                     {%- set zp_price = item.get('electricity_price', zp_price_nested.get('amount') if zp_price_nested is mapping else none) -%}
-                    {%- set ns_zp.data = ns_zp.data + [{time_key: zp_time, 'electricity_price': zp_price}] -%}
+                    {%- if zp_time | as_datetime(none) is not none and zp_price | is_number -%}
+                        {%- set ns_zp.data = ns_zp.data + [{time_key: zp_time, value_key: zp_price}] -%}
+                    {%- endif -%}
                 {%- endfor -%}
                 {%- set data = ns_zp.data -%}
             {%- endif -%}
